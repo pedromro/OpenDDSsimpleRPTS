@@ -1,0 +1,7 @@
+GNUmakefile
+GNUmakefile.*
+.obj
+.depend.*
+DataExchange*
+publisher
+subscriber
