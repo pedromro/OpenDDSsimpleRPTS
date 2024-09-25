@@ -1,0 +1,38 @@
+project(*idl): dcps {
+  requires += no_opendds_safety_profile
+  TypeSupport_Files {
+    DataExchange.idl
+  }
+
+  custom_only = 1
+}
+
+
+project(*Publisher) : dcpsexe, dcps_tcp, dcps_rtps_udp {
+  requires += no_opendds_safety_profile
+  exename = publisher
+  after    += *idl
+
+  TypeSupport_Files {
+    DataExchange.idl
+  }
+
+  Source_Files {
+    publisher.cpp
+  }
+}
+
+project(*Subscriber) : dcpsexe, dcps_tcp, dcps_rtps_udp {
+  requires += no_opendds_safety_profile
+  exename = subscriber
+  after += *Publisher
+
+  TypeSupport_Files {
+    DataExchange.idl
+  }
+
+  Source_Files {
+    DataReaderListenerImpl.cpp
+    subscriber.cpp
+  }
+}

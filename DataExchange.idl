@@ -1,0 +1,27 @@
+/*
+ * Distributed under the OpenDDS License.
+ * See: http://www.opendds.org/license.html
+ */
+
+module Messager {
+
+  @topic
+  struct Message {
+    string from;
+    string subject;
+    @key long subject_id;
+    string text;
+    long count;
+  };
+};
+
+module Sensors {
+
+  @topic
+  struct SoundingData {
+    @key long sensor_id;
+    double depthBelowTransducer;
+    double depthBelowKeel;
+    boolean validity;
+  };
+};
