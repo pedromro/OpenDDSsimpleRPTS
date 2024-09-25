@@ -1,6 +1,9 @@
 # OpenDDSsimpleRPTS
 
 
+Ensure the env variables are set.
+$ source /opt/OpenDDS/setenv.sh
+
 To generate the C++ files from the IDL
 $ mwc.pl -type gnuace
 
