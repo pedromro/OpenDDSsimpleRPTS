@@ -45,33 +45,30 @@ DataReaderListenerImpl::on_liveliness_changed(
 void
 DataReaderListenerImpl::on_data_available(DDS::DataReader_ptr reader)
 {
-  Messager::MessageDataReader_var reader_i =
-    Messager::MessageDataReader::_narrow(reader);
-  Sensors::SoundingDataDataReader_var reader_j =
+  Sensors::SoundingDataDataReader_var reader_i =
     Sensors::SoundingDataDataReader::_narrow(reader);
 
-  if (!reader_i && !reader_j) {
+  if (!reader_i) {
     ACE_ERROR((LM_ERROR,
                ACE_TEXT("ERROR: %N:%l: on_data_available() -")
                ACE_TEXT(" _narrow failed!\n")));
     ACE_OS::exit(1);
   }
 
-  Messager::Message message;
+  Sensors::SoundingData soundingdata;
   DDS::SampleInfo info;
 
-  const DDS::ReturnCode_t error = reader_i->take_next_sample(message, info);
+  const DDS::ReturnCode_t error = reader_i->take_next_sample(soundingdata, info);
 
   if (error == DDS::RETCODE_OK) {
     std::cout << "SampleInfo.sample_rank = " << info.sample_rank << std::endl;
     std::cout << "SampleInfo.instance_state = " << OpenDDS::DCPS::InstanceState::instance_state_mask_string(info.instance_state) << std::endl;
 
     if (info.valid_data) {
-      std::cout << "Message: subject    = " << message.subject.in() << std::endl
-                << "         subject_id = " << message.subject_id   << std::endl
-                << "         from       = " << message.from.in()    << std::endl
-                << "         count      = " << message.count        << std::endl
-                << "         text       = " << message.text.in()    << std::endl;
+      std::cout << "SoundingData: sensor_id            = " << soundingdata.sensor_id            << std::endl
+                << "              depthBelowTransducer = " << soundingdata.depthBelowTransducer << std::endl
+                << "              depthBelowKeel       = " << soundingdata.depthBelowKeel       << std::endl
+                << "              validity             = " << soundingdata.validity             << std::endl;
 
     }
 

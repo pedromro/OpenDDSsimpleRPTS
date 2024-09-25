@@ -5,3 +5,5 @@ GNUmakefile.*
 DataExchange*
 publisher
 subscriber
+.vscode
+*.log

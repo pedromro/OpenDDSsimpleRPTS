@@ -18,6 +18,8 @@
 #include <dds/DdsDcpsPublicationC.h>
 
 #include <ace/Log_Msg.h>
+#include <random>
+
 
 int ACE_TMAIN(int argc, ACE_TCHAR* argv[])
 {
@@ -40,19 +42,8 @@ int ACE_TMAIN(int argc, ACE_TCHAR* argv[])
                        1);
     }
 
-    // Register TypeSupport (Messager::Message)
-    Messager::MessageTypeSupport_var ts =
-      new Messager::MessageTypeSupportImpl;
-
-    if (ts->register_type(participant, "") != DDS::RETCODE_OK) {
-      ACE_ERROR_RETURN((LM_ERROR,
-                        ACE_TEXT("ERROR: %N:%l: main() -")
-                        ACE_TEXT(" register_type failed!\n")),
-                       1);
-    }
-
     // Register TypeSupport (Sensors::SoundingData)
-    Sensors::SoundingDataTypeSupport_var ts2 =
+    Sensors::SoundingDataTypeSupport_var ts =
       new Sensors::SoundingDataTypeSupportImpl;
 
     if (ts->register_type(participant, "") != DDS::RETCODE_OK) {
@@ -62,23 +53,8 @@ int ACE_TMAIN(int argc, ACE_TCHAR* argv[])
                        1);
     }
 
-    if (ts2->register_type(participant, "") != DDS::RETCODE_OK) {
-      ACE_ERROR_RETURN((LM_ERROR,
-                        ACE_TEXT("ERROR: %N:%l: main() -")
-                        ACE_TEXT(" register_type failed!\n")),
-                       1);
-    }
-
-    // Create Topic (Movie Discussion List)
-    CORBA::String_var type_name = ts->get_type_name();
-    DDS::Topic_var topic =
-      participant->create_topic("Movie Discussion List",
-                                type_name,
-                                TOPIC_QOS_DEFAULT,
-                                0,
-                                OpenDDS::DCPS::DEFAULT_STATUS_MASK);
     // Create Topic (Sonar XYZ)
-    type_name = ts2->get_type_name();
+    CORBA::String_var type_name = ts->get_type_name();
     DDS::Topic_var topic_sounding =
       participant->create_topic("Sonar XYZ",
                                 type_name,
@@ -107,41 +83,16 @@ int ACE_TMAIN(int argc, ACE_TCHAR* argv[])
     }
 
     // Create DataWriter
-    DDS::DataWriter_var writer =
-      publisher->create_datawriter(topic,
-                                   DATAWRITER_QOS_DEFAULT,
-                                   0,
-                                   OpenDDS::DCPS::DEFAULT_STATUS_MASK);
-
-    // Create DataWriter
     DDS::DataWriter_var writer_sounding =
       publisher->create_datawriter(topic_sounding,
                                    DATAWRITER_QOS_DEFAULT,
                                    0,
                                    OpenDDS::DCPS::DEFAULT_STATUS_MASK);
 
-    if (!writer) {
-      ACE_ERROR_RETURN((LM_ERROR,
-                        ACE_TEXT("ERROR: %N:%l: main() -")
-                        ACE_TEXT(" create_datawriter failed!\n")),
-                       1);
-    }
-
     if (!writer_sounding) {
       ACE_ERROR_RETURN((LM_ERROR,
                         ACE_TEXT("ERROR: %N:%l: main() -")
                         ACE_TEXT(" create_datawriter_sounding failed!\n")),
-                       1);
-    }
-
-
-    Messager::MessageDataWriter_var message_writer =
-      Messager::MessageDataWriter::_narrow(writer);
-
-    if (!message_writer) {
-      ACE_ERROR_RETURN((LM_ERROR,
-                        ACE_TEXT("ERROR: %N:%l: main() -")
-                        ACE_TEXT(" _narrow failed!\n")),
                        1);
     }
 
@@ -159,19 +110,10 @@ int ACE_TMAIN(int argc, ACE_TCHAR* argv[])
 
 
     // Block until Subscriber is available
-    DDS::StatusCondition_var condition = writer->get_statuscondition();
-    condition->set_enabled_statuses(DDS::PUBLICATION_MATCHED_STATUS);
-
-    DDS::WaitSet_var ws = new DDS::WaitSet;
-    ws->attach_condition(condition);
-
-
-
-    // Block until Subscriber is available
     DDS::StatusCondition_var condition_sounding = writer_sounding->get_statuscondition();
     condition_sounding->set_enabled_statuses(DDS::PUBLICATION_MATCHED_STATUS);
 
-    // DDS::WaitSet_var ws = new DDS::WaitSet;
+    DDS::WaitSet_var ws = new DDS::WaitSet;
     ws->attach_condition(condition_sounding);
 
 
@@ -180,18 +122,12 @@ int ACE_TMAIN(int argc, ACE_TCHAR* argv[])
 
     while (true) {
       DDS::PublicationMatchedStatus matches;
-      if (writer->get_publication_matched_status(matches) != ::DDS::RETCODE_OK) {
+      if (writer_sounding->get_publication_matched_status(matches) != ::DDS::RETCODE_OK) {
         ACE_ERROR_RETURN((LM_ERROR,
                           ACE_TEXT("ERROR: %N:%l: main() -")
-                          ACE_TEXT(" get_publication_matched_status failed!\n")),
+                          ACE_TEXT(" get_publication_matched_status _sounding failed!\n")),
                          1);
       }
-      // if (writer_sounding->get_publication_matched_status(matches) != ::DDS::RETCODE_OK) {
-      //   ACE_ERROR_RETURN((LM_ERROR,
-      //                     ACE_TEXT("ERROR: %N:%l: main() -")
-      //                     ACE_TEXT(" get_publication_matched_status _sounding failed!\n")),
-      //                    1);
-      // }
 
       if (matches.current_count >= 1) {
         break;
@@ -210,17 +146,7 @@ int ACE_TMAIN(int argc, ACE_TCHAR* argv[])
     ACE_DEBUG((LM_DEBUG,
                ACE_TEXT("Subscriber is available\n")));
 
-    ws->detach_condition(condition);
-
-    // Write samples
-    Messager::Message message;
-    message.subject_id = 99;
-
-    message.from       = "Comic Book Guy";
-    message.subject    = "Review";
-    message.text       = "Worst. Movie. Ever.";
-    message.count      = 0;
-
+    ws->detach_condition(condition_sounding);
 
     // Write samples
     Sensors::SoundingData soundingdata;
@@ -230,42 +156,37 @@ int ACE_TMAIN(int argc, ACE_TCHAR* argv[])
     soundingdata.depthBelowKeel       = 50;
     soundingdata.validity             = true;
 
+    // Generate some randon number to add some dynamics to the values
+    // Create a random number generator engine
+    std::random_device rd;
+    std::mt19937 gen(rd());
+
+    // Create a distribution that generates numbers in the range [-1, 1]
+    std::uniform_real_distribution<> dis(-1.0, 1.0); 
+
+
     for (int i = 0; i < 10; ++i) {
-      DDS::ReturnCode_t error = message_writer->write(message, DDS::HANDLE_NIL);
-      ++message.count;
-      ++message.subject_id;
+      DDS::ReturnCode_t error = sounding_writer->write(soundingdata, DDS::HANDLE_NIL);
+      ++soundingdata.sensor_id;
+      soundingdata.depthBelowTransducer +=  dis(gen)*10 ;
+      soundingdata.depthBelowKeel       +=  dis(gen)*5 ;
 
       if (error != DDS::RETCODE_OK) {
         ACE_ERROR((LM_ERROR,
                    ACE_TEXT("ERROR: %N:%l: main() -")
                    ACE_TEXT(" write returned %d!\n"), error));
       }
-
-      // error = sounding_writer->write(soundingdata, DDS::HANDLE_NIL);
-      // ++soundingdata.sensor_id;
-
-      // if (error != DDS::RETCODE_OK) {
-      //   ACE_ERROR((LM_ERROR,
-      //              ACE_TEXT("ERROR: %N:%l: main() -")
-      //              ACE_TEXT(" write returned %d!\n"), error));
-      // }
     }
 
     // Wait for samples to be acknowledged
     DDS::Duration_t timeout = { 30, 0 };
-    if (message_writer->wait_for_acknowledgments(timeout) != DDS::RETCODE_OK) {
+
+    if (sounding_writer->wait_for_acknowledgments(timeout) != DDS::RETCODE_OK) {
       ACE_ERROR_RETURN((LM_ERROR,
                         ACE_TEXT("ERROR: %N:%l: main() -")
                         ACE_TEXT(" wait_for_acknowledgments failed!\n")),
                        1);
     }
-
-    // if (sounding_writer->wait_for_acknowledgments(timeout) != DDS::RETCODE_OK) {
-    //   ACE_ERROR_RETURN((LM_ERROR,
-    //                     ACE_TEXT("ERROR: %N:%l: main() -")
-    //                     ACE_TEXT(" wait_for_acknowledgments failed!\n")),
-    //                    1);
-    // }
 
     
     // Clean-up!

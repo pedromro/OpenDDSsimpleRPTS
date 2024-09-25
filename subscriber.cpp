@@ -41,9 +41,9 @@ int ACE_TMAIN(int argc, ACE_TCHAR* argv[])
                        1);
     }
 
-    // Register Type (Messager::Message)
-    Messager::MessageTypeSupport_var ts =
-      new Messager::MessageTypeSupportImpl;
+    // Register Type (Sensors::SoundingData)
+    Sensors::SoundingDataTypeSupport_var ts =
+      new Sensors::SoundingDataTypeSupportImpl;
 
     if (ts->register_type(participant, "") != DDS::RETCODE_OK) {
       ACE_ERROR_RETURN((LM_ERROR,
@@ -55,7 +55,7 @@ int ACE_TMAIN(int argc, ACE_TCHAR* argv[])
     // Create Topic (Movie Discussion List)
     CORBA::String_var type_name = ts->get_type_name();
     DDS::Topic_var topic =
-      participant->create_topic("Movie Discussion List",
+      participant->create_topic("Sonar XYZ",
                                 type_name,
                                 TOPIC_QOS_DEFAULT,
                                 0,
@@ -101,8 +101,8 @@ int ACE_TMAIN(int argc, ACE_TCHAR* argv[])
                        1);
     }
 
-    Messager::MessageDataReader_var reader_i =
-      Messager::MessageDataReader::_narrow(reader);
+    Sensors::SoundingDataDataReader_var reader_i =
+      Sensors::SoundingDataDataReader::_narrow(reader);
 
     if (!reader_i) {
       ACE_ERROR_RETURN((LM_ERROR,
